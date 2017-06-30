@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NewtonWars</title>
+    <style>
+        body {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<h1>Newton Wars</h1>
+
+<input type="hidden" id="token">
+<p>Username: <input id="username"><button type="button" id="connect">Connect</button><button type="button" id="disconnect">Disconnect</button></p>
+<p>Velocity: <span id="velocity"></span></p>
+<p>Angle: <span id="angle"></span></p>
+<canvas id="joystick" width="500" height="500">
+
+</canvas>
+<script>
+    const joystick = document.getElementById("joystick");
+    const ctx = joystick.getContext("2d");
+
+    function paintControls() {
+        ctx.beginPath();
+        ctx.arc(250, 250, 170, 0, Math.PI * 2, true); // Outer circle
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(250, 250, 5, 0, Math.PI * 2, true);
+        ctx.fill();
+    }
+
+    function getMousePos(canvas, evt) {
+      var rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+    }
+
+    function getVelocity(mousePos) {
+      return Math.round((Math.sqrt(Math.pow(mousePos.x - 250, 2) + Math.pow(mousePos.y - 250, 2)) / 7) * 10) / 10;
+    }
+
+    function getAngle(mousePos) {
+      var angle = Math.atan2(mousePos.y - 250, mousePos.x - 250);
+      var degrees = (((angle > 0 ? angle : (2 * Math.PI + angle)) * 360 / (2 * Math.PI)) - 270) * 10;
+      return Math.round(degrees < 0 ? degrees + 3600 : degrees) / 10;
+    }
+
+    paintControls();
+
+    document.getElementById("connect").onclick = function(evt) {
+      var xhttp = new XMLHttpRequest();
+      var params = {
+        username: document.getElementById("username").value
+      };
+      xhttp.open("POST", "http://172.16.0.151:8080/api/connect", true);
+      xhttp.setRequestHeader("Content-type", "application/json");
+      xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+          var response = JSON.parse(xhttp.responseText);
+          document.getElementById("token").value = response.token;
+        }
+      };
+      xhttp.send(JSON.stringify(params));
+    };
+
+    document.getElementById("disconnect").onclick = function(evt) {
+      var xhttp = new XMLHttpRequest();
+      var params = {
+        token: document.getElementById("token").value
+      };
+      xhttp.open("POST", "http://172.16.0.151:8080/api/disconnect", true);
+      xhttp.setRequestHeader("Content-type", "application/json");
+      xhttp.send(JSON.stringify(params));
+    };
+
+    joystick.addEventListener('mousemove', function(evt) {
+      ctx.clearRect(0, 0, joystick.width, joystick.height);
+
+      paintControls();
+
+      var mousePos = getMousePos(joystick, evt);
+      ctx.beginPath();
+      ctx.moveTo(250, 250);
+      ctx.lineTo(mousePos.x, mousePos.y);
+      ctx.stroke();
+
+      document.getElementById("velocity").textContent = getVelocity(mousePos);
+      document.getElementById("angle").textContent = getAngle(mousePos);
+    }, false);
+
+    joystick.addEventListener("click", function(evt) {
+      var mousePos = getMousePos(joystick, evt);
+      console.log("Shoot: " +getAngle(mousePos) + "/" + getVelocity(mousePos));
+
+      var xhttp = new XMLHttpRequest();
+      var params = {
+        token: document.getElementById("token").value,
+        angle: getAngle(mousePos),
+        velocity: getVelocity(mousePos)
+      };
+      xhttp.open("POST", "http://172.16.0.151:8080/api/shoot", true);
+      xhttp.setRequestHeader("Content-type", "application/json");
+      xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            console.log(xhttp.responseText);
+        }
+      };
+      xhttp.send(JSON.stringify(params));
+    });
+
+
+</script>
+</body>
+</html>
